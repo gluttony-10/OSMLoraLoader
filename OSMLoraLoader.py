@@ -4,7 +4,10 @@ import folder_paths
 import comfy.sd
 import comfy.utils
 
+
 class OSMLoraLoader:
+    _lora_cache = {}
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -26,29 +29,34 @@ class OSMLoraLoader:
     FUNCTION = "apply_lora_conditionally"
     CATEGORY = "loaders"
 
+    @classmethod
+    def _load_lora(cls, lora_name):
+        lora_path = folder_paths.get_full_path_or_raise("loras", lora_name)
+        if lora_name in cls._lora_cache:
+            cached_path, cached_data = cls._lora_cache[lora_name]
+            if cached_path == lora_path:
+                return cached_data
+
+        lora_data = comfy.utils.load_torch_file(lora_path, safe_load=True)
+        cls._lora_cache[lora_name] = (lora_path, lora_data)
+        return lora_data
+
     def apply_lora_conditionally(self, enable_flag, lora_name, weight_min, weight_max, seed, model=None, clip=None):
         if enable_flag == 0:
-            # 如果收到0，返回原始model和clip，权重为0
             return (model, clip, 0.0)
 
-        # 设置随机种子
-        random.seed(seed)
-        weight = random.uniform(weight_min, weight_max)
-
-        # 检查是否有model和clip输入
         if model is None or clip is None:
             raise ValueError("Model and CLIP must be provided when enable_flag is 1")
 
-        # 加载LoRA
-        lora_path = folder_paths.get_full_path("loras", lora_name)
-        lora_model = comfy.utils.load_torch_file(lora_path, safe_load=True)
+        random.seed(seed)
+        weight = random.uniform(weight_min, weight_max)
 
-        # 应用LoRA到model和clip
-        model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora_model, weight, weight)
+        lora_data = self._load_lora(lora_name)
+        model_lora, clip_lora = comfy.sd.load_lora_for_models(model, clip, lora_data, weight, weight)
 
         return (model_lora, clip_lora, weight)
 
-# 注册节点
+
 NODE_CLASS_MAPPINGS = {
     "OSMLoraLoader": OSMLoraLoader,
 }
@@ -57,7 +65,4 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "OSMLoraLoader": "OSMLoraLoader",
 }
 
-__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
-
-
-
+__all__ = ["NODE_CLASS_MAPPINGS", "NODE_DISPLAY_NAME_MAPPINGS"]

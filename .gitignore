@@ -1,0 +1,23 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Model files
+*.ckpt
+*.pth
+*.safetensors
+*.gguf
+*.bin
+
+# Cache
+.cache
